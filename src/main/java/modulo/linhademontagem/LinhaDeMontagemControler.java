@@ -5,16 +5,17 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
+import modulo.linhademontagem.guarda.EnumPeriodo;
 import modulo.linhademontagem.guarda.GuardaEtapaProcesso;
 import modulo.linhademontagem.guarda.GuardaHorarioDeRotinaTrabalho;
 import modulo.linhademontagem.guarda.GuardaLinhaDeMontagem;
+import modulo.linhademontagem.guarda.GuardaRotinaDeTrabalho;
 import modulo.sistema.Dialogo;
 
 public class LinhaDeMontagemControler {
@@ -111,32 +112,54 @@ public class LinhaDeMontagemControler {
 		return total;
 	}
 
+	public Optional<List<GuardaLinhaDeMontagem>> gerarLinhasDeMontagem(List<GuardaEtapaProcesso> arquivo) {
+
+		List<GuardaLinhaDeMontagem> listaDeMontagem = new ArrayList<>();
+
+		getAgendamento(arquivo);
+
+		return Optional.ofNullable(listaDeMontagem);
+	}
+
 	private List<List<GuardaEtapaProcesso>> getAgendamento(List<GuardaEtapaProcesso> listaDeEtapasOriginal) {
 
 		int tempoMinimoDoDia = 6 * 60;
 		int tempoTotal = getTempoTotalDasEtapas(listaDeEtapasOriginal);
 		int diasPossiveis = tempoTotal / tempoMinimoDoDia;
 
-		List<GuardaEtapaProcesso> listaTemporariaDeEtapas = new ArrayList<GuardaEtapaProcesso>();
-		listaTemporariaDeEtapas.addAll(listaDeEtapasOriginal);
+		// List<GuardaEtapaProcesso> listaTemporariaDeEtapas = new
+		// ArrayList<GuardaEtapaProcesso>();
+		// listaTemporariaDeEtapas.addAll(listaDeEtapasOriginal);
 
-		List<List<GuardaEtapaProcesso>> listaParteDaManha = getPossibilidades(listaTemporariaDeEtapas, diasPossiveis,
-				true);
+		GuardaLinhaDeMontagem linhaDeMontagem = new GuardaLinhaDeMontagem();
+		linhaDeMontagem.setDiasPossiveis(diasPossiveis);
+		linhaDeMontagem.setTotalDeEtapas(listaDeEtapasOriginal);
 
-		for (List<GuardaEtapaProcesso> list : listaParteDaManha)
-			listaTemporariaDeEtapas.removeAll(list);
+		GuardaRotinaDeTrabalho gRotina = new GuardaRotinaDeTrabalho();
+		GuardaHorarioDeRotinaTrabalho gRegistroMatutino = processaPeriodoDaLinhaDeMontagem(linhaDeMontagem.getTotalDeEtapas(), diasPossiveis, EnumPeriodo.MATUTINO);
 
-		List<List<GuardaEtapaProcesso>> listaParteDaTarde = getPossibilidades(listaTemporariaDeEtapas, diasPossiveis,
-				false);
+		GuardaHorarioDeRotinaTrabalho gRegistroVespertino = processaPeriodoDaLinhaDeMontagem(linhaDeMontagem.getTotalDeEtapas(), diasPossiveis, EnumPeriodo.VESPERTINO);
 
-		for (List<GuardaEtapaProcesso> list : listaParteDaTarde)
-			listaTemporariaDeEtapas.removeAll(list);
+		gRotina.getPeriodoDeTrabalho().add(gRegistroMatutino);
+		gRotina.getPeriodoDeTrabalho().add(gRegistroVespertino);
+		linhaDeMontagem.getRotinaDeTrabalho().add(gRotina);
 
-		if (!listaTemporariaDeEtapas.isEmpty()) {
+		// List<List<GuardaEtapaProcesso>> listaParteDaManha =
+		// getPossibilidades(listaTemporariaDeEtapas, diasPossiveis, true);
+		// for (List<GuardaEtapaProcesso> list : listaParteDaManha)
+		// listaTemporariaDeEtapas.removeAll(list);
 
-			List<GuardaEtapaProcesso> listaDeAgendamento = new ArrayList<GuardaEtapaProcesso>();
+		// List<List<GuardaEtapaProcesso>> listaParteDaTarde =
+		// getPossibilidades(listaTemporariaDeEtapas, diasPossiveis, false);
+		// for (List<GuardaEtapaProcesso> list : listaParteDaTarde)
+		// listaTemporariaDeEtapas.removeAll(list);
 
-			for (List<GuardaEtapaProcesso> lista : listaParteDaTarde) {
+		if (!linhaDeMontagem.getTotalDeEtapas().isEmpty()) {
+
+			List<GuardaEtapaProcesso> listaTmp = new ArrayList<GuardaEtapaProcesso>();
+
+			// for (List<GuardaEtapaProcesso> lista : listaParteDaTarde) {
+			for (List<GuardaEtapaProcesso> lista : gRegistroVespertino.getEtapas()) {
 
 				int totalTime = getTempoTotalDasEtapas(lista);
 
@@ -146,29 +169,51 @@ public class LinhaDeMontagemControler {
 					if (ConversationTime + totalTime <= 240) {
 						lista.add(etapaProcesso);
 						etapaProcesso.setAgendada(true);
-						listaDeAgendamento.add(etapaProcesso);
+						listaTmp.add(etapaProcesso);
 					}
 				}
 
-				listaTemporariaDeEtapas.removeAll(listaDeAgendamento);
-				if (listaTemporariaDeEtapas.isEmpty())
+				linhaDeMontagem.getTotalDeEtapas().removeAll(listaTmp);
+				if (linhaDeMontagem.getTotalDeEtapas().isEmpty())
 					break;
 			}
 		}
 
-		if (!listaTemporariaDeEtapas.isEmpty()) {
+		if (!linhaDeMontagem.getTotalDeEtapas().isEmpty()) {
 			Dialogo.showMenssageErro("Não foi possível agendar todas as tarefas.");
 			return null;
 		}
 
-		return getListaDeAgendamento(listaParteDaManha, listaParteDaTarde);
+		return getListaDeAgendamento(linhaDeMontagem);
+	}
+
+	private GuardaHorarioDeRotinaTrabalho processaPeriodoDaLinhaDeMontagem(List<GuardaEtapaProcesso> list2, int dias, EnumPeriodo periodo) {
+
+		GuardaHorarioDeRotinaTrabalho gRotina = new GuardaHorarioDeRotinaTrabalho();
+		gRotina.setPeriodo(periodo);
+		gRotina.setEtapas(getPossibilidades(list2, dias, periodo == EnumPeriodo.MATUTINO));
+
+		for (List<GuardaEtapaProcesso> list : gRotina.getEtapas())
+			list2.removeAll(list);
+
+		return gRotina;
 	}
 
 	@SuppressWarnings("deprecation")
-	private List<List<GuardaEtapaProcesso>> getListaDeAgendamento(List<List<GuardaEtapaProcesso>> listParteManha,
-			List<List<GuardaEtapaProcesso>> listParteTarde) {
+	private List<List<GuardaEtapaProcesso>> getListaDeAgendamento(GuardaLinhaDeMontagem linhaDeMontagem
+	// List<List<GuardaEtapaProcesso>>
+	// listParteManha,List<List<GuardaEtapaProcesso>> listParteTarde
+	) {
 
-		int totalDiasPossiveis = listParteManha.size();
+		// linhaDeMontagem.getHorarioRotinaTrabalho()
+		// .stream()
+		// .filter(e-> e.getPeriodo() == EnumPeriodo.MATUTINO)
+		// .forEach(rotina -> {
+		// rotina.getEtapas().size();
+		// });
+
+		// int totalDiasPossiveis = listParteManha.size();
+		int totalDiasPossiveis = linhaDeMontagem.getDiasPossiveis();
 
 		List<String> listaFinal = new ArrayList<String>();
 
@@ -186,6 +231,26 @@ public class LinhaDeMontagemControler {
 
 			System.out.println("LINHA DE MONTAGEM " + numLinhaDeMontagem + ":");
 			listaFinal.add("\n LINHA DE MONTAGEM" + Integer.toString(dia) + ": \n");
+
+			List<List<GuardaDiaDeMontagem>> listaDiaMontagem = linhaDeMontagem.getRotinaTrabalho();
+
+			List<GuardaHorarioDeRotinaTrabalho> diaDeMontagem = listaDiaDeMontagem.get(dia);
+
+			diaDeMontagem
+					.stream()
+					.filter(filtro -> filtro.getPeriodo() == EnumPeriodo.MATUTINO)
+					.forEach(periodo -> {
+						// for (GuardaEtapaProcesso etapa : listManha) {
+						periodo.setHorario(horario);
+						System.out.println(horario + periodo.getDescricao());
+						listaFinal.add(horario + periodo.getDescricao() + "\n");
+
+						horario = getProximoAgendamento(date, periodo.getTempoExecucao());
+						listaTemporaria.add(periodo);
+						// }
+					});
+
+			// diaDeMontagem.getEtapas().get(0).getPeriodo() == EnumPeriodo.MATUTINO
 
 			List<GuardaEtapaProcesso> listManha = listParteManha.get(dia);
 			for (GuardaEtapaProcesso etapa : listManha) {
@@ -248,13 +313,13 @@ public class LinhaDeMontagemControler {
 		return str;
 	}
 
-	private List<List<GuardaEtapaProcesso>> getPossibilidades(List<GuardaEtapaProcesso> listEtapas,
-			int totalDiaPossiveis, boolean isTurnoDaManha) {
+	private List<List<GuardaEtapaProcesso>> getPossibilidades(
+			List<GuardaEtapaProcesso> listEtapas, int totalDiaPossiveis, boolean isMatutino) {
 
 		int tempoLimiteMinimo = 180;
 		int tempoLimiteMaximo = 240;
 
-		if (isTurnoDaManha)
+		if (isMatutino)
 			tempoLimiteMaximo = tempoLimiteMinimo;
 
 		int totalEtapas = listEtapas.size();
@@ -271,6 +336,7 @@ public class LinhaDeMontagemControler {
 			while (inicio != totalEtapas) {
 				int currentCount = inicio;
 				inicio++;
+
 				GuardaEtapaProcesso etapa = listEtapas.get(currentCount);
 				if (etapa.isAgendada())
 					continue;
@@ -281,7 +347,7 @@ public class LinhaDeMontagemControler {
 				listaCombinacaoTmp.add(etapa);
 				totalTime += tempo;
 
-				if (isTurnoDaManha) {
+				if (isMatutino) {
 					if (totalTime == tempoLimiteMaximo)
 						break;
 				} else if (totalTime >= tempoLimiteMinimo)
@@ -289,7 +355,7 @@ public class LinhaDeMontagemControler {
 			}
 
 			boolean valido = false;
-			if (isTurnoDaManha)
+			if (isMatutino)
 				valido = (totalTime == tempoLimiteMaximo);
 			else
 				valido = (totalTime >= tempoLimiteMinimo && totalTime <= tempoLimiteMaximo);
@@ -297,8 +363,8 @@ public class LinhaDeMontagemControler {
 			if (valido) {
 
 				listaCombinacoes.add(listaCombinacaoTmp);
-				for (GuardaEtapaProcesso Conversation : listaCombinacaoTmp)
-					Conversation.setAgendada(true);
+				for (GuardaEtapaProcesso etapa : listaCombinacaoTmp)
+					etapa.setAgendada(true);
 
 				totalDeCombinacoes++;
 				if (totalDeCombinacoes == totalDiaPossiveis)
@@ -309,48 +375,40 @@ public class LinhaDeMontagemControler {
 		return listaCombinacoes;
 	}
 
-	public Optional<List<GuardaLinhaDeMontagem>> gerarLinhasDeMontagem(List<GuardaEtapaProcesso> arquivo) {
-
-		List<GuardaLinhaDeMontagem> listaDeMontagem = new ArrayList<>();
-
-		getAgendamento(arquivo);
-
-		return Optional.ofNullable(listaDeMontagem);
-	}
-
-//	public void configurarHorarioDeTrabalhoPadrao() {
-//
-//		if (linhaDeMontagem.getHorarioRotinaTrabalho().isEmpty()) {
-//			List<GuardaHorarioDeRotinaTrabalho> listaDeHorarios = new ArrayList<>();
-//
-//			GuardaHorarioDeRotinaTrabalho gHorarioRotina = new GuardaHorarioDeRotinaTrabalho();
-//			gHorarioRotina.setInicio(new Time(9 * 3600));
-//			gHorarioRotina.setFim(new Time(12 * 3600));
-//			gHorarioRotina.setDescricao("Período da manhã");
-//			listaDeHorarios.add(gHorarioRotina);
-//
-//			gHorarioRotina = new GuardaHorarioDeRotinaTrabalho();
-//			gHorarioRotina.setInicio(new Time(12 * 3600));
-//			gHorarioRotina.setFim(new Time(13 * 3600));
-//			gHorarioRotina.setDescricao("Período do Almoço");
-//			gHorarioRotina.setDescanco(true);
-//
-//			gHorarioRotina = new GuardaHorarioDeRotinaTrabalho();
-//			gHorarioRotina.setInicio(new Time(13 * 3600));
-//			gHorarioRotina.setFim(new Time(17 * 3600));
-//			gHorarioRotina.setDescricao("Período da Tarde");
-//
-//			gHorarioRotina = new GuardaHorarioDeRotinaTrabalho();
-//			gHorarioRotina.setInicio(new Time(16 * 3600));
-//			gHorarioRotina.setFim(new Time(1 * 3600));
-//			gHorarioRotina.setDescricao("Atividades de Ginástica");
-//			gHorarioRotina.setDescanco(true);
-//
-//			listaDeHorarios.add(gHorarioRotina);
-//
-//			linhaDeMontagem.setHorarioRotinaTrabalho(listaDeHorarios);
-//		}
-//
-//	}
+	// public void configurarHorarioDeTrabalhoPadrao() {
+	//
+	// if (linhaDeMontagem.getHorarioRotinaTrabalho().isEmpty()) {
+	// List<GuardaHorarioDeRotinaTrabalho> listaDeHorarios = new ArrayList<>();
+	//
+	// GuardaHorarioDeRotinaTrabalho gHorarioRotina = new
+	// GuardaHorarioDeRotinaTrabalho();
+	// gHorarioRotina.setInicio(new Time(9 * 3600));
+	// gHorarioRotina.setFim(new Time(12 * 3600));
+	// gHorarioRotina.setDescricao("Período da manhã");
+	// listaDeHorarios.add(gHorarioRotina);
+	//
+	// gHorarioRotina = new GuardaHorarioDeRotinaTrabalho();
+	// gHorarioRotina.setInicio(new Time(12 * 3600));
+	// gHorarioRotina.setFim(new Time(13 * 3600));
+	// gHorarioRotina.setDescricao("Período do Almoço");
+	// gHorarioRotina.setDescanco(true);
+	//
+	// gHorarioRotina = new GuardaHorarioDeRotinaTrabalho();
+	// gHorarioRotina.setInicio(new Time(13 * 3600));
+	// gHorarioRotina.setFim(new Time(17 * 3600));
+	// gHorarioRotina.setDescricao("Período da Tarde");
+	//
+	// gHorarioRotina = new GuardaHorarioDeRotinaTrabalho();
+	// gHorarioRotina.setInicio(new Time(16 * 3600));
+	// gHorarioRotina.setFim(new Time(1 * 3600));
+	// gHorarioRotina.setDescricao("Atividades de Ginástica");
+	// gHorarioRotina.setDescanco(true);
+	//
+	// listaDeHorarios.add(gHorarioRotina);
+	//
+	// linhaDeMontagem.setHorarioRotinaTrabalho(listaDeHorarios);
+	// }
+	//
+	// }
 
 }

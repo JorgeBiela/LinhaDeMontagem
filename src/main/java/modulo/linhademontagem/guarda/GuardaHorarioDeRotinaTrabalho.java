@@ -1,30 +1,12 @@
 package modulo.linhademontagem.guarda;
 
-import java.sql.Time;
+import java.util.List;
 
 public class GuardaHorarioDeRotinaTrabalho {
-	private Time inicio;
-	private Time fim;
-
+	private String horario;
 	private String descricao;
-
-	private boolean isDescanco;
-
-	public Time getInicio() {
-		return inicio;
-	}
-
-	public void setInicio(Time inicio) {
-		this.inicio = inicio;
-	}
-
-	public Time getFim() {
-		return fim;
-	}
-
-	public void setFim(Time fim) {
-		this.fim = fim;
-	}
+	private EnumPeriodo periodo;
+	private List<List<GuardaEtapaProcesso>> etapas;
 
 	public String getDescricao() {
 		return descricao;
@@ -34,11 +16,27 @@ public class GuardaHorarioDeRotinaTrabalho {
 		this.descricao = descricao;
 	}
 
-	public boolean isDescanco() {
-		return isDescanco;
+	public EnumPeriodo getPeriodo() {
+		return periodo;
 	}
 
-	public void setDescanco(boolean isDescanco) {
-		this.isDescanco = isDescanco;
+	public void setPeriodo(EnumPeriodo periodo) {
+		this.periodo = periodo;
+	}
+
+	public String getHorario() {
+		return horario;
+	}
+
+	public void setHorario(String horario) {
+		this.horario = horario;
+	}
+
+	public List<List<GuardaEtapaProcesso>> getEtapas() {
+		return etapas;
+	}
+
+	public void setEtapas(List<List<GuardaEtapaProcesso>> etapas) {
+		this.etapas = etapas;
 	}
 }
