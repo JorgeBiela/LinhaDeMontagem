@@ -1,20 +1,21 @@
 package modulo.linhademontagem;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
-import guarda.linhademontagem.GuardaEtapaProcesso;
-import guarda.linhademontagem.GuardaLinhaDeMontagem;
+import modulo.linhademontagem.guarda.GuardaEtapaProcesso;
 
 public class LinhaDeMontagemTest {
 
 	@Test
 	public void leituraDoArquivoDeveRetornarVazio() {
-		ControlerLinhaDeMontagem controler = new ControlerLinhaDeMontagem();
+		LinhaDeMontagemControler controler = new LinhaDeMontagemControler();
 
 		Optional<List<GuardaEtapaProcesso>> arquivo = controler.lerArquivoDeEtapasDeProcesso("");
 
@@ -23,7 +24,7 @@ public class LinhaDeMontagemTest {
 
 	@Test
 	public void leituraDoArquivoNaoDeveRetornarVazio() {
-		ControlerLinhaDeMontagem controler = new ControlerLinhaDeMontagem();
+		LinhaDeMontagemControler controler = new LinhaDeMontagemControler();
 
 		String path = "/arquivos/LinhaDeMontagem.txt";
 		Optional<List<GuardaEtapaProcesso>> arquivo = controler.lerArquivoDeEtapasDeProcesso(path);
@@ -34,16 +35,15 @@ public class LinhaDeMontagemTest {
 
 	@Test
 	public void leituraDoArquivoDeveGerarDuasLinhaDeMontagem() {
-		ControlerLinhaDeMontagem controler = new ControlerLinhaDeMontagem();
+		LinhaDeMontagemControler controler = new LinhaDeMontagemControler();
 
 		String path = "/arquivos/LinhaDeMontagem.txt";
 		Optional<List<GuardaEtapaProcesso>> arquivo = controler.lerArquivoDeEtapasDeProcesso(path);
 
-		if (arquivo.isPresent()) {
-			Optional<List<GuardaLinhaDeMontagem>> linhasDeMontagem = controler.gerarLinhasDeMontagem(arquivo.get());
-		}
-
-		assertTrue(arquivo.isPresent());
+		if (arquivo.isPresent())
+			assertNotNull(controler.gerarLinhasDeMontagem(arquivo.get()));
+		else
+			fail();
 
 	}
 
@@ -56,4 +56,8 @@ public class LinhaDeMontagemTest {
 	// DESCRICAO OU TEMPO NAO PREENCHIDO
 
 	// CARGA HORARIO VAZIA
+
+	// TESTE DE SOBRECARGA
+
+	//
 }

@@ -1,4 +1,4 @@
-package guarda.linhademontagem;
+package modulo.linhademontagem.guarda;
 
 import java.sql.Time;
 

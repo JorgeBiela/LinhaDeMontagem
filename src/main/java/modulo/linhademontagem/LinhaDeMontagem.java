@@ -3,20 +3,20 @@ package modulo.linhademontagem;
 import java.util.List;
 import java.util.Optional;
 
-import guarda.linhademontagem.GuardaEtapaProcesso;
+import modulo.linhademontagem.guarda.GuardaEtapaProcesso;
 
 public class LinhaDeMontagem {
 
 	public void execute() {
 
-		ControlerLinhaDeMontagem controler = new ControlerLinhaDeMontagem();
+		LinhaDeMontagemControler controler = new LinhaDeMontagemControler();
 
 		String path = "/arquivos/LinhaDeMontagem.txt";
 		Optional<List<GuardaEtapaProcesso>> optListEtapas = controler.lerArquivoDeEtapasDeProcesso(path);
 
 		if (optListEtapas.isPresent()) {
+			// controler.configurarHorarioDeTrabalhoPadrao();
 
-			controler.configurarHorarioDeTrabalhoPadrao();
 			controler.gerarLinhasDeMontagem(optListEtapas.get());
 
 		} else
